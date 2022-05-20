@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
 	"golang.org/x/crypto/bcrypt"
+	"log"
 	_ "math/rand"
 	"net/http"
 	_ "time"
@@ -41,9 +42,9 @@ func Register(c *gin.Context) {
 	}
 
 	//密码加密
-	hasedPassword, err := bcrypt.GenerateFromPassword([]byte(password),bcrypt.DefaultCost)
+	hasedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError,gin.H{"code":500,"msg":"加密错误"})
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "msg": "加密错误"})
 		return
 	}
 
@@ -85,15 +86,26 @@ func Login(c *gin.Context) {
 	}
 
 	//判断密码是否正确
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password),[]byte(password)); err != nil{
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"code": "400", "msg": "密码错误"})
 		return
 	}
 
 	//发放token
-	token := "11"
+	token, err := common.ReleaseToken(user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "masg": "系统异常"})
+		log.Printf("token generate error : %v", err)
+		return
+	}
 
-	c.JSON(200, gin.H{"code": 200, "msg": "登录成功","data":gin.H{"token":token}})
+	c.JSON(200, gin.H{"code": 200, "msg": "登录成功", "data": gin.H{"token": token}})
+}
+
+func AuthInfo(c *gin.Context) {
+	user, _ := c.Get("user")
+
+	c.JSON(http.StatusOK, gin.H{"code": 200, "msg": "success", "data": gin.H{"user_info": user}})
 }
 
 func isTelephoneExist(db *gorm.DB, phone string) bool {
