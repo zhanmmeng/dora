@@ -9,6 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
+	"github.com/spf13/viper"
+	"os"
 )
 
 type User struct {
@@ -20,6 +22,7 @@ type User struct {
 
 func main() {
 
+	InitConfig()
 	db := common.InitDB()
 	defer db.Close()
 
@@ -30,7 +33,21 @@ func main() {
 
 	// 3.监听端口，默认在8080
 	// Run("里面不指定端口号默认为8080")
-	panic(r.Run(":8000"))
+	port := viper.GetString("server.port")
+	if port != "" {
+		panic(r.Run(":" + port))
+	}
+	panic(r.Run())
 }
 
+func InitConfig() {
+	workDir, _ := os.Getwd()
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath(workDir + "/Backstage/config")
 
+	err := viper.ReadInConfig()
+	if err != nil {
+		panic(main)
+	}
+}
