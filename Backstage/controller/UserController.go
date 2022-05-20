@@ -2,7 +2,9 @@ package controller
 
 import (
 	"dora/Backstage/common"
+	"dora/Backstage/dto"
 	"dora/Backstage/model"
+	"dora/Backstage/response"
 	"dora/Backstage/util"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
@@ -13,6 +15,7 @@ import (
 	_ "time"
 )
 
+// Register 注册
 func Register(c *gin.Context) {
 
 	DB := common.GetDB()
@@ -23,12 +26,12 @@ func Register(c *gin.Context) {
 
 	//数据验证
 	if len(phone) != 11 {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{"code": "422", "msg": "手机号必须为11位"})
+		response.Response(c, http.StatusUnprocessableEntity, 422, "手机号必须为11位", nil)
 		return
 	}
 
 	if len(password) < 6 {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{"code": "422", "msg": "密码不能少于6位"})
+		response.Response(c, http.StatusUnprocessableEntity, 422, "密码不能少于6位", nil)
 		return
 	}
 
@@ -37,14 +40,14 @@ func Register(c *gin.Context) {
 	}
 
 	if isTelephoneExist(DB, phone) {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{"code": "422", "msg": "该手机号已注册"})
+		response.Response(c, http.StatusUnprocessableEntity, 422, "该手机号已注册", nil)
 		return
 	}
 
 	//密码加密
 	hasedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "msg": "加密错误"})
+		response.Response(c, http.StatusInternalServerError, 500, "加密错误", nil)
 		return
 	}
 
@@ -56,9 +59,10 @@ func Register(c *gin.Context) {
 	}
 	DB.Create(&newUser)
 
-	c.JSON(200, gin.H{"code": 200, "msg": "注册成功"})
+	response.Success(c, "注册成功", nil)
 }
 
+// Login 登录
 func Login(c *gin.Context) {
 	DB := common.GetDB()
 
@@ -99,15 +103,17 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"code": 200, "msg": "登录成功", "data": gin.H{"token": token}})
+	response.Success(c, "登录成功", gin.H{"token": token})
 }
 
+// AuthInfo 获取用户信息
 func AuthInfo(c *gin.Context) {
 	user, _ := c.Get("user")
 
-	c.JSON(http.StatusOK, gin.H{"code": 200, "msg": "success", "data": gin.H{"user_info": user}})
+	response.Success(c, "success", gin.H{"user_info": dto.ToUserDTO(user.(model.User))})
 }
 
+//验证电话号码是否存在
 func isTelephoneExist(db *gorm.DB, phone string) bool {
 	var user model.User
 	db.Where("phone = ?", phone).First(&user)
